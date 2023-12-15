@@ -38,9 +38,9 @@ void ConcurrentHashMap<K, V>::resize(size_t new_size) {
     // Create resize table if it doesn't exist.
     // May need a short mutex instead of CAS.
     if (new_table == nullptr) {
-        table_->next.compare_exchange_strong(new_table, MOVED_HASH);
+        // table_->next.compare_exchange_strong(new_table, (void *)MOVED_HASH);
         if (new_table == nullptr) {
-            new_table = Table<K, V>::init(new_size);
+            new_table = Table<K, V>::init(new_size, max_load_factor_);
             table_->next.store(new_table, std::memory_order_release);
         }
     }
@@ -55,9 +55,9 @@ void ConcurrentHashMap<K, V>::resize(size_t new_size) {
                 break;
             } else {
 
-                Entry<K, V> *new_entry = &new_table->get_cells()[hash & (new_table->size - 1)];
-                new_table->insert(entry->key.load(std::memory_order_relaxed),
-                                  entry->value.load(std::memory_order_relaxed));
+                // Entry<K, V> *new_entry = &new_table->get_cells()[hash & (new_table->size - 1)];
+                // new_table->insert(entry->key.load(std::memory_order_relaxed),
+                //                   entry->value.load(std::memory_order_relaxed));
                 break;
             }
         }

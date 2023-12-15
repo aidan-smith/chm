@@ -27,9 +27,8 @@ ABYSS_INLINE uint64_t fmix64(uint64_t h) {
     h *= 0xc4ceb9fe1a85ec53LLU;
     h ^= h >> 33;
 
-    if (h == 0) h = 0x7000000000000000LLU;
-    if (h == 1) h = 0x7000000000000001LLU;
-    if (h == 2) h = 0x7000000000000002LLU;
+    // Protect sentinel values.
+    h &= ~(1ULL << 63);
 
     return h;
 }
@@ -99,8 +98,8 @@ public:
 private:
     constexpr static V NULL_VAL = V();
     constexpr static size_t NULL_HASH = 0;
-    constexpr static size_t MOVED_HASH = 1;
-    constexpr static size_t TOMBSTONE_HASH = 2;
+    constexpr static size_t TOMBSTONE_HASH = 1;
+    constexpr static size_t MOVED_HASH = 1ULL << 63;
     Table<K, V> *table_;
     float max_load_factor_;
 };
