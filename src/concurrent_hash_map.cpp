@@ -22,7 +22,7 @@ ABYSS_INLINE uint64_t next_pow2(uint64_t n) {
 
 template <typename K, typename V>
 ConcurrentHashMap<K, V>::ConcurrentHashMap(size_t size) {
-    max_load_factor_ = 0.5;
+    max_load_factor_ = 0.75f;
     table_ = Table<K, V>::init(std::max<size_t>(next_pow2(size), INIT_SIZE), max_load_factor_);
 }
 
@@ -55,9 +55,9 @@ void ConcurrentHashMap<K, V>::resize(size_t new_size) {
                 break;
             } else {
 
-                // Entry<K, V> *new_entry = &new_table->get_cells()[hash & (new_table->size - 1)];
-                // new_table->insert(entry->key.load(std::memory_order_relaxed),
-                //                   entry->value.load(std::memory_order_relaxed));
+                Entry<K, V> *new_entry = &new_table->get_cells()[hash & (new_table->size - 1)];
+                new_table->insert(entry->key.load(std::memory_order_relaxed),
+                                  entry->value.load(std::memory_order_relaxed));
                 break;
             }
         }
@@ -67,8 +67,8 @@ void ConcurrentHashMap<K, V>::resize(size_t new_size) {
 template <typename K, typename V>
 void ConcurrentHashMap<K, V>::insert(const K &key, const V &value) {
     if (table_->slots_remaining < 0) {
-        // resize();
-        exit(1);
+        std::cerr << "Table is full!" << std::endl;
+        resize(table_->size << 1);
     }
 
     const size_t key_hash = hash(key);

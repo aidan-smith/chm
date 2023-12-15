@@ -37,7 +37,6 @@ ABYSS_INLINE uint64_t fmix64(uint64_t h) {
 template <typename K, typename V>
 struct Entry {
     std::atomic<size_t> hash;
-    // std::atomic<K> key;
     std::atomic<V> value;
 };
 
@@ -52,7 +51,7 @@ struct Table {
     static Table *init(size_t size, float max_load_factor) {
         Table *table = (Table *)malloc(sizeof(Table) + sizeof(Entry<K, V>) * size);
         table->size = size;
-        table->slots_remaining = size * max_load_factor + 1; // TODO: check this
+        table->slots_remaining = size * max_load_factor + 1;
         table->next = nullptr;
         return table;
     }
