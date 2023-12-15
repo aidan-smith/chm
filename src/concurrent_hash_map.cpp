@@ -33,33 +33,42 @@ ConcurrentHashMap<K, V>::~ConcurrentHashMap() {
 
 template <typename K, typename V>
 void ConcurrentHashMap<K, V>::resize(size_t new_size) {
-    Table<K, V> *new_table = table_->next.load(std::memory_order_relaxed);
+    Table<K, V> *new_table = table_->next.load(std::memory_order_acquire);
 
     // Create resize table if it doesn't exist.
+    // May need a short mutex instead of CAS.
     if (new_table == nullptr) {
         table_->next.compare_exchange_strong(new_table, MOVED_HASH);
         if (new_table == nullptr) {
             new_table = Table<K, V>::init(new_size);
-            table_->next.store(new_table, std::memory_order_relaxed);
+            table_->next.store(new_table, std::memory_order_release);
         }
     }
 
     for (size_t i = 0; i < table_->size; ++i) {
         Entry<K, V> *entry = &table_->get_cells()[i];
-        if (entry->hash.load(std::memory_order_relaxed) != NULL_HASH) {
-            new_table->insert(entry->key.load(std::memory_order_relaxed),
-                               entry->value.load(std::memory_order_relaxed));
+        for (;;) {
+            size_t hash = entry->hash.load(std::memory_order_relaxed);
+            if (hash == NULL_HASH || hash == TOMBSTONE_HASH) {
+                if (entry->hash.compare_exchange_strong(hash, MOVED_HASH)) break;
+            } else if (hash == MOVED_HASH) {
+                break;
+            } else {
+
+                // Entry<K, V> *new_entry = &new_table->get_cells()[hash & (new_table->size - 1)];
+                // new_table->insert(entry->key.load(std::memory_order_relaxed),
+                //                   entry->value.load(std::memory_order_relaxed));
+                break;
+            }
         }
     }
-
-
-    // table_ = new_table;
 }
 
 template <typename K, typename V>
 void ConcurrentHashMap<K, V>::insert(const K &key, const V &value) {
     if (table_->slots_remaining < 0) {
-        resize();
+        // resize();
+        exit(1);
     }
 
     const size_t key_hash = hash(key);
@@ -72,7 +81,6 @@ void ConcurrentHashMap<K, V>::insert(const K &key, const V &value) {
         if (probed_hash == NULL_HASH) {
             table_->get_cells()[idx].hash.compare_exchange_strong(probed_hash, key_hash);
             if (probed_hash != NULL_HASH) continue;  // Slot was taken by another thread.
-            table_->get_cells()[idx].key.store(key, std::memory_order_relaxed);
             table_->get_cells()[idx].value.store(value, std::memory_order_relaxed);
             table_->slots_remaining--;
             return;
@@ -81,6 +89,11 @@ void ConcurrentHashMap<K, V>::insert(const K &key, const V &value) {
             return;
         }
     }
+}
+
+template <typename K, typename V>
+void ConcurrentHashMap<K, V>::erase(const K &key) {
+
 }
 
 template <typename K, typename V>
@@ -114,10 +127,5 @@ bool ConcurrentHashMap<K, V>::contains(const K &key) const {
         }
     }
 }
-
-// template <typename K, typename V>
-// void ConcurrentHashMap<K, V>::resize(size_t size) {
-//
-// }
 
 };  // namespace abyss

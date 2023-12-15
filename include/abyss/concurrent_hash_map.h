@@ -29,6 +29,7 @@ ABYSS_INLINE uint64_t fmix64(uint64_t h) {
 
     if (h == 0) h = 0x7000000000000000LLU;
     if (h == 1) h = 0x7000000000000001LLU;
+    if (h == 2) h = 0x7000000000000002LLU;
 
     return h;
 }
@@ -36,7 +37,7 @@ ABYSS_INLINE uint64_t fmix64(uint64_t h) {
 template <typename K, typename V>
 struct Entry {
     std::atomic<size_t> hash;
-    std::atomic<K> key;
+    // std::atomic<K> key;
     std::atomic<V> value;
 };
 
@@ -97,8 +98,10 @@ public:
     const V &operator[](const K &key) const;
 
 private:
+    constexpr static V NULL_VAL = V();
     constexpr static size_t NULL_HASH = 0;
     constexpr static size_t MOVED_HASH = 1;
+    constexpr static size_t TOMBSTONE_HASH = 2;
     Table<K, V> *table_;
     float max_load_factor_;
 };
